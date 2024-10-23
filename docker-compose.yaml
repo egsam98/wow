@@ -1,0 +1,24 @@
+services:
+  server:
+    image: egsam98/wow-server:v1.0.0
+    container_name: wow-server
+    build:
+      dockerfile: apps/server/Dockerfile
+    environment:
+      LOG_PRETTY: true
+      ADDR: :8080
+      PUZZLE_ZEROES: 3
+      TCP_DEADLINE: 20s
+    restart: always
+
+  client:
+    image: egsam98/wow-client:v1.0.0
+    container_name: wow-client
+    build:
+      dockerfile: apps/client/Dockerfile
+    environment:
+      LOG_PRETTY: true
+      ADDR: server:8080
+    depends_on:
+      - server
+    restart: on-failure

@@ -1,0 +1,6 @@
+.idea/
+bin/
+**/.env
+Makefile
+.golangci.yaml
+docker-compose.yaml

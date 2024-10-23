@@ -1,0 +1,29 @@
+linters:
+  enable:
+    - predeclared
+    - nilerr
+    - copyloopvar
+    - gosec
+    - bodyclose
+    - dogsled
+    - durationcheck
+    - errorlint
+    - misspell
+    - unparam
+    - exhaustive
+  disable:
+    - typecheck
+    - unused
+    - ineffassign
+    - staticcheck
+
+linters-settings:
+  gosec:
+    excludes:
+      - G115
+      - G404
+  exhaustive:
+    default-signifies-exhaustive: true
+  govet:
+    disable:
+      - printf
