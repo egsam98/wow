@@ -6,9 +6,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/egsam98/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/rs/zerolog/pkgerrors"
 
 	"github.com/egsam98/wow/internal/api"
 	"github.com/egsam98/wow/internal/envconf"
@@ -30,7 +30,7 @@ func main() {
 		log.Fatal().Err(err).Msg("Load environment variables")
 	}
 
-	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	zerolog.ErrorStackMarshaler = errors.MarshalStack
 	zerolog.SetGlobalLevel(envs.Logger.Lvl)
 	if envs.Logger.Pretty {
 		log.Logger = zerolog.New(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) { w.TimeFormat = time.RFC3339 })).

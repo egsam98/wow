@@ -3,9 +3,9 @@ package envconf
 import (
 	"os"
 
+	"github.com/egsam98/errors"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/pkg/errors"
 )
 
 func Load(out any, path string) error {

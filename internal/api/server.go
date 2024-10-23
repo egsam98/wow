@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/egsam98/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/egsam98/wow/internal/pow"
@@ -144,19 +144,9 @@ func (s *Server) requestPoW(conn net.Conn) error {
 }
 
 func (s *Server) adjustPoW(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(5 * time.Second):
-			s.pow.AdjustZeroes(uint(s.conns.Load()))
-		}
-	}
+	// TODO
 }
 
 func ip(conn net.Conn) net.IP {
-	if tcp, ok := conn.RemoteAddr().(*net.TCPAddr); ok {
-		return tcp.IP
-	}
-	return nil
+	return conn.RemoteAddr().(*net.TCPAddr).IP
 }

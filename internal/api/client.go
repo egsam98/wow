@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/egsam98/errors"
 
 	"github.com/egsam98/wow/internal/pow"
 )
@@ -32,12 +32,12 @@ func (c *Client) Close() error { return c.conn.Close() }
 
 func clientDo[In, Out message](c *Client, ctx context.Context, req In) (Out, error) {
 	if err := write(c.conn, req); err != nil {
-		return *new(Out), errors.Wrapf(err, "%T: write request", req)
+		return *new(Out), errors.Wrap(err, "%T: write request", req)
 	}
 	for {
 		msg, err := read(c.conn)
 		if err != nil {
-			return *new(Out), errors.Wrapf(err, "%T: read response", req)
+			return *new(Out), errors.Wrap(err, "%T: read response", req)
 		}
 		switch msg := msg.(type) {
 		case *PowChallengeResponse:

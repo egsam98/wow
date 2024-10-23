@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"math/rand/v2"
 
-	"github.com/pkg/errors"
+	"github.com/egsam98/errors"
 
 	"github.com/egsam98/wow/apps/server/internal/repository"
 )
@@ -21,7 +21,7 @@ type Repository struct {
 func NewRepository() (*Repository, error) {
 	var self Repository
 	if err := json.Unmarshal(phrases, &self.phrases); err != nil {
-		return nil, errors.Wrapf(err, "unmarshal %s into %T", phrases, self.phrases)
+		return nil, errors.Wrap(err, "unmarshal %s into %T", phrases, self.phrases)
 	}
 	return &self, nil
 }

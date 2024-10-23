@@ -6,7 +6,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/pkg/errors"
+	"github.com/egsam98/errors"
 
 	"github.com/egsam98/wow/internal/pow"
 )
@@ -17,7 +17,7 @@ const terminal = '\n'
 func write(conn net.Conn, msg message) error {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		return errors.Wrapf(err, "marshal %+v", msg)
+		return errors.Wrap(err, "marshal %+v", msg)
 	}
 	body, err := json.Marshal(operation{
 		Code:    msg.opCode(),
@@ -38,7 +38,7 @@ func read(conn net.Conn) (message, error) {
 	}
 	var op operation
 	if err := json.Unmarshal(buf, &op); err != nil {
-		return nil, errors.Wrapf(err, "unmarshal %s into %T", buf, op)
+		return nil, errors.Wrap(err, "unmarshal %s into %T", buf, op)
 	}
 
 	var msg message
@@ -57,7 +57,7 @@ func read(conn net.Conn) (message, error) {
 		return nil, errors.Errorf("unexpected command: %s", op.Code)
 	}
 	if err := json.Unmarshal(op.Message, msg); err != nil {
-		return nil, errors.Wrapf(err, "unmarshal packet message %s into %T", op.Message, msg)
+		return nil, errors.Wrap(err, "unmarshal packet message %s into %T", op.Message, msg)
 	}
 	return msg, nil
 }

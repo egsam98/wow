@@ -1,6 +1,6 @@
 services:
   server:
-    image: egsam98/wow-server:v1.0.0
+    image: egsam98/wow-server:v0.1.0
     container_name: wow-server
     build:
       dockerfile: apps/server/Dockerfile
@@ -12,7 +12,7 @@ services:
     restart: always
 
   client:
-    image: egsam98/wow-client:v1.0.0
+    image: egsam98/wow-client:v0.1.0
     container_name: wow-client
     build:
       dockerfile: apps/client/Dockerfile

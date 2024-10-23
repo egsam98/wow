@@ -4,8 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/egsam98/errors"
 )
 
 const ChalLen = 8
@@ -39,19 +38,4 @@ func (p *Puzzle) Verify(challenge [ChalLen]byte, nonce [8]byte) error {
 		}
 	}
 	return nil
-}
-
-func (p *Puzzle) AdjustZeroes(conns uint) {
-	var zeroes uint = 4
-	if conns < 100 {
-		zeroes = 3
-	}
-
-	if zeroes == p.zeroes {
-		return
-	}
-	p.zeroes = zeroes
-	log.Info().
-		Uint("active_connections", conns).
-		Uint("zeroes", p.zeroes).Msg("Puzzle: zeroes parameter has been adjusted")
 }
