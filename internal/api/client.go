@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/binary"
+	"iter"
 	"math"
 	"net"
 	"time"
@@ -26,35 +27,81 @@ func Dial(addr string) (*Client, error) {
 }
 
 func (c *Client) Phrase(ctx context.Context) (*PhraseResponse, error) {
-	return clientDo[*PhraseRequest, *PhraseResponse](c, ctx, new(PhraseRequest))
+	return clientSync[*PhraseRequest, *PhraseResponse](c, ctx, new(PhraseRequest))
+}
+
+func (c *Client) AllPhrases(ctx context.Context) iter.Seq2[*PhraseResponse, error] {
+	return clientStream[*AllPhrasesRequest, *PhraseResponse](c, ctx, new(AllPhrasesRequest))
 }
 
 func (c *Client) Close() error { return c.conn.Close() }
 
-func clientDo[In, Out message](c *Client, ctx context.Context, req In) (Out, error) {
+func clientSync[In, Out message](c *Client, ctx context.Context, req In) (Out, error) {
+	var zero Out
 	if err := write(c.conn, req); err != nil {
-		return *new(Out), errors.Wrap(err, "%T: write request", req)
+		return zero, errors.Wrap(err, "%T: write request", req)
 	}
 	for {
 		msg, err := read(c.conn)
 		if err != nil {
-			return *new(Out), errors.Wrap(err, "%T: read response", req)
+			return zero, errors.Wrap(err, "%T: read response", req)
 		}
 		switch msg := msg.(type) {
-		case *PowChallengeResponse:
+		case *powChallengeResponse:
 			nonce, err := computePoW(ctx, msg.Challenge, msg.Zeros)
 			if err != nil {
-				return *new(Out), err
+				return zero, err
 			}
-			if err := write(c.conn, &PowNonceRequest{Nonce: nonce}); err != nil {
-				return *new(Out), errors.Wrap(err, "PowNonceRequest: write request")
+			if err := write(c.conn, &powNonceRequest{Nonce: nonce}); err != nil {
+				return zero, errors.Wrap(err, "powNonceRequest: write request")
 			}
 		case Out:
 			return msg, nil
 		case *ErrorResponse:
-			return *new(Out), msg
+			return zero, msg
 		default:
-			return *new(Out), errors.Errorf("unexpected response message %#v", msg)
+			return zero, errors.Errorf("unexpected response message %#v", msg)
+		}
+	}
+}
+
+func clientStream[In, Out message](c *Client, ctx context.Context, req In) iter.Seq2[Out, error] {
+	var zero Out
+	if err := write(c.conn, req); err != nil {
+		return func(yield func(Out, error) bool) { yield(zero, errors.Wrap(err, "%T: write request", req)) }
+	}
+
+	return func(yield func(Out, error) bool) {
+		for {
+			msg, err := read(c.conn)
+			if err != nil {
+				yield(zero, errors.Wrap(err, "%T: read response", req))
+				return
+			}
+			switch msg := msg.(type) {
+			case *powChallengeResponse:
+				nonce, err := computePoW(ctx, msg.Challenge, msg.Zeros)
+				if err != nil {
+					yield(zero, err)
+					return
+				}
+				if err := write(c.conn, &powNonceRequest{Nonce: nonce}); err != nil {
+					yield(zero, errors.Wrap(err, "PowNonceRequest: write request"))
+					return
+				}
+			case Out:
+				if !yield(msg, nil) {
+					return
+				}
+			case *streamTombstoneResponse:
+				return
+			case *ErrorResponse:
+				yield(zero, msg)
+				return
+			default:
+				yield(zero, errors.Errorf("unexpected response message %#v", msg))
+				return
+			}
 		}
 	}
 }

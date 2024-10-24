@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"iter"
 
 	"github.com/egsam98/wow/apps/server/internal/repository"
 	"github.com/egsam98/wow/internal/api"
@@ -22,4 +23,19 @@ func (h *Handler) Phrase(context.Context, *api.PhraseRequest) (*api.PhraseRespon
 		return nil, err
 	}
 	return (*api.PhraseResponse)(phrase), nil
+}
+
+func (h *Handler) AllPhrases(context.Context, *api.AllPhrasesRequest) iter.Seq2[*api.PhraseResponse, error] {
+	return func(yield func(*api.PhraseResponse, error) bool) {
+		phrases, err := h.repo.AllPhrases()
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		for _, phrase := range phrases {
+			if !yield((*api.PhraseResponse)(&phrase), nil) {
+				return
+			}
+		}
+	}
 }

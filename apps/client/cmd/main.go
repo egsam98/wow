@@ -64,5 +64,15 @@ func run(ctx context.Context, envs Envs) error {
 		return err
 	}
 	log.Info().Str("author", res.Author).Msg(res.Quote)
+
+	log.Info().Msgf("Obtaining all phrases...")
+	var phrases []api.PhraseResponse
+	for res, err := range client.AllPhrases(ctx) {
+		if err != nil {
+			return err
+		}
+		phrases = append(phrases, *res)
+	}
+	log.Info().Int("count", len(phrases)).Interface("phrases", phrases).Send()
 	return nil
 }

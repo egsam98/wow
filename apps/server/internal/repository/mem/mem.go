@@ -30,3 +30,9 @@ func (r *Repository) Phrase() (*repository.Phrase, error) {
 	i := rand.IntN(len(r.phrases))
 	return &r.phrases[i], nil
 }
+
+func (r *Repository) AllPhrases() ([]repository.Phrase, error) {
+	copied := make([]repository.Phrase, len(r.phrases))
+	copy(copied, r.phrases)
+	return copied, nil
+}

@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"iter"
 	"net"
 	"os"
 	"sync/atomic"
@@ -25,10 +27,9 @@ type Server struct {
 
 type ServerHandler interface {
 	Phrase(context.Context, *PhraseRequest) (*PhraseResponse, error)
+	AllPhrases(context.Context, *AllPhrasesRequest) iter.Seq2[*PhraseResponse, error]
 }
 
-// NewServer
-// Optionals: puzzle
 func NewServer(addr string, tcpDeadline time.Duration, handler ServerHandler, puzzle *pow.Puzzle) Server {
 	return Server{
 		handler:     handler,
@@ -86,7 +87,6 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		if err != nil {
 			return err
 		}
-		log.Debug().IPAddr("ip", ip(conn)).Msgf("Received message %#v", msg)
 
 		if err := s.requestPoW(conn); err != nil {
 			return err
@@ -96,13 +96,13 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 		switch msg := msg.(type) {
 		case *PhraseRequest:
 			res, err = s.handler.Phrase(ctx, msg)
+			return respond(conn, res, err)
+		case *AllPhrasesRequest:
+			it := s.handler.AllPhrases(ctx, msg)
+			return respondStream(conn, it)
 		default:
-			err = errors.Errorf("unexpected message %v (%T)", msg, msg)
+			return write(conn, &ErrorResponse{Message: fmt.Sprintf("unexpected message %v (%T)", msg, msg)})
 		}
-		if err != nil {
-			res = &ErrorResponse{Message: err.Error()}
-		}
-		return write(conn, res)
 	}
 
 	for {
@@ -124,15 +124,11 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 
 // requestPoW requests Proof of Work from connection before granting access to resource
 func (s *Server) requestPoW(conn net.Conn) error {
-	if s.puzzle == nil {
-		return nil
-	}
-
 	challenge, zeros, err := s.puzzle.Challenge(uint(s.conns.Load()))
 	if err != nil {
 		return err
 	}
-	if err := write(conn, &PowChallengeResponse{Challenge: challenge, Zeros: zeros}); err != nil {
+	if err := write(conn, &powChallengeResponse{Challenge: challenge, Zeros: zeros}); err != nil {
 		return err
 	}
 
@@ -140,15 +136,34 @@ func (s *Server) requestPoW(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
-	req, ok := msg.(*PowNonceRequest)
+	req, ok := msg.(*powNonceRequest)
 	if !ok {
-		return write(conn, &ErrorResponse{Message: "PowNonceRequest is expected"})
+		return write(conn, &ErrorResponse{Message: "powNonceRequest is expected"})
 	}
 
 	if err := pow.Verify(challenge, zeros, req.Nonce); err != nil {
 		return write(conn, &ErrorResponse{Message: err.Error()})
 	}
 	return nil
+}
+
+func respond[T message](conn net.Conn, res T, err error) error {
+	if err != nil {
+		return write(conn, &ErrorResponse{Message: err.Error()})
+	}
+	return write(conn, res)
+}
+
+func respondStream[T message](conn net.Conn, it iter.Seq2[T, error]) error {
+	for res, err := range it {
+		if err != nil {
+			return write(conn, &ErrorResponse{Message: err.Error()})
+		}
+		if err := write(conn, res); err != nil {
+			return err
+		}
+	}
+	return write(conn, new(streamTombstoneResponse))
 }
 
 // ip extracts IP address from net.Conn
