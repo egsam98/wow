@@ -22,10 +22,10 @@ import (
 const envPath = ".env"
 
 type Envs struct {
-	Addr         string        `envconfig:"ADDR" required:"true"`
-	PuzzleZeroes uint          `envconfig:"PUZZLE_ZEROES" default:"3"`
-	TCPDeadline  time.Duration `envconfig:"TCP_DEADLINE" default:"20s"`
-	Logger       struct {
+	Addr        string        `envconfig:"ADDR" required:"true"`
+	PuzzleZeros uint          `envconfig:"PUZZLE_ZEROS" required:"true"`
+	TCPDeadline time.Duration `envconfig:"TCP_DEADLINE" default:"20s"`
+	Logger      struct {
 		Pretty bool          `envconfig:"LOG_PRETTY" default:"false"`
 		Lvl    zerolog.Level `envconfig:"LOG_LVL" default:"debug"`
 	}
@@ -54,7 +54,10 @@ func main() {
 }
 
 func run(ctx context.Context, envs Envs) error {
-	puzzle, err := pow.NewPuzzle(envs.PuzzleZeroes)
+	zeros := envs.PuzzleZeros
+	puzzle, err := pow.NewPuzzle(func(uint) uint {
+		return zeros
+	})
 	if err != nil {
 		return err
 	}
@@ -74,7 +77,7 @@ func run(ctx context.Context, envs Envs) error {
 	g, ctx := errgroup.WithContext(ctx)
 	log.Info().
 		Str("addr", envs.Addr).
-		Uint("puzzle_zeroes(complexity)", envs.PuzzleZeroes).
+		Uint("puzzle_zeros(complexity)", envs.PuzzleZeros).
 		Msg("Listening server")
 	g.Go(func() error { return srv.Listen(ctx) })
 

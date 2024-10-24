@@ -12,6 +12,7 @@ import (
 	"github.com/egsam98/wow/internal/pow"
 )
 
+// Client connects to Words of Wisdom server
 type Client struct {
 	conn net.Conn
 }
@@ -41,11 +42,11 @@ func clientDo[In, Out message](c *Client, ctx context.Context, req In) (Out, err
 		}
 		switch msg := msg.(type) {
 		case *PowChallengeResponse:
-			nonce, err := computePoW(ctx, msg.Challenge, msg.Zeroes)
+			nonce, err := computePoW(ctx, msg.Challenge, msg.Zeros)
 			if err != nil {
 				return *new(Out), err
 			}
-			if err := write(c.conn, &PowNonceRequest{Challenge: msg.Challenge, Nonce: nonce}); err != nil {
+			if err := write(c.conn, &PowNonceRequest{Nonce: nonce}); err != nil {
 				return *new(Out), errors.Wrap(err, "PowNonceRequest: write request")
 			}
 		case Out:
@@ -58,13 +59,10 @@ func clientDo[In, Out message](c *Client, ctx context.Context, req In) (Out, err
 	}
 }
 
-func computePoW(ctx context.Context, challenge [pow.ChalLen]byte, zeroes uint) ([8]byte, error) {
-	puzzle, err := pow.NewPuzzle(zeroes)
-	if err != nil {
-		return [8]byte{}, err
-	}
-
+// computePoW solves Proof of work on every call
+func computePoW(ctx context.Context, challenge [pow.ChalLen]byte, zeros uint) ([8]byte, error) {
 	var nonce [8]byte
+	var err error
 	for i := uint64(0); i <= math.MaxUint64; i++ {
 		select {
 		case <-ctx.Done():
@@ -73,8 +71,7 @@ func computePoW(ctx context.Context, challenge [pow.ChalLen]byte, zeroes uint) (
 		}
 
 		binary.LittleEndian.PutUint64(nonce[:], i)
-		err = puzzle.Verify(challenge, nonce)
-		if !errors.Is(err, pow.ErrVerify) {
+		if err = pow.Verify(challenge, zeros, nonce); !errors.Is(err, pow.ErrVerify) {
 			break
 		}
 	}

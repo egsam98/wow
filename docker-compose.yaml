@@ -7,7 +7,7 @@ services:
     environment:
       LOG_PRETTY: true
       ADDR: :8080
-      PUZZLE_ZEROES: 3
+      PUZZLE_ZEROS: 3
       TCP_DEADLINE: 20s
     restart: always
 

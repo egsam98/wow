@@ -14,11 +14,12 @@ import (
 	"github.com/egsam98/wow/internal/pow"
 )
 
+// Server serves TCP connection
 type Server struct {
 	addr        string
 	tcpDeadline time.Duration
 	handler     ServerHandler
-	pow         *pow.Puzzle
+	puzzle      *pow.Puzzle
 	conns       atomic.Int32
 }
 
@@ -26,15 +27,19 @@ type ServerHandler interface {
 	Phrase(context.Context, *PhraseRequest) (*PhraseResponse, error)
 }
 
-func NewServer(addr string, tcpDeadline time.Duration, handler ServerHandler, pow *pow.Puzzle) Server {
+// NewServer
+// Optionals: puzzle
+func NewServer(addr string, tcpDeadline time.Duration, handler ServerHandler, puzzle *pow.Puzzle) Server {
 	return Server{
 		handler:     handler,
 		addr:        addr,
 		tcpDeadline: tcpDeadline,
-		pow:         pow,
+		puzzle:      puzzle,
 	}
 }
 
+// Listen accepts incoming TCP connections handling them in `Server.handle` method.
+// The method blocks until the context is canceled
 func (s *Server) Listen(ctx context.Context) error {
 	lis, err := new(net.ListenConfig).Listen(ctx, "tcp", s.addr)
 	if err != nil {
@@ -47,8 +52,6 @@ func (s *Server) Listen(ctx context.Context) error {
 			log.Err(err).Msg("Close listener")
 		}
 	}()
-
-	go s.adjustPoW(ctx)
 
 	for {
 		conn, err := lis.Accept()
@@ -70,12 +73,13 @@ func (s *Server) Close() {
 	}
 }
 
+// handle connection in separate loop
 func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	s.conns.Add(1)
 	defer s.conns.Add(-1)
 	defer conn.Close()
 
-	loop := func() error {
+	handle := func() error {
 		_ = conn.SetDeadline(time.Now().Add(s.tcpDeadline))
 
 		msg, err := read(conn)
@@ -102,7 +106,7 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 
 	for {
-		switch err := loop(); {
+		switch err := handle(); {
 		case err == nil:
 			continue
 		case errors.Is(err, io.EOF):
@@ -118,13 +122,17 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
+// requestPoW requests Proof of Work from connection before granting access to resource
 func (s *Server) requestPoW(conn net.Conn) error {
-	if s.pow == nil {
+	if s.puzzle == nil {
 		return nil
 	}
 
-	challenge, zeroes := s.pow.Challenge()
-	if err := write(conn, &PowChallengeResponse{Challenge: challenge, Zeroes: zeroes}); err != nil {
+	challenge, zeros, err := s.puzzle.Challenge(uint(s.conns.Load()))
+	if err != nil {
+		return err
+	}
+	if err := write(conn, &PowChallengeResponse{Challenge: challenge, Zeros: zeros}); err != nil {
 		return err
 	}
 
@@ -137,16 +145,14 @@ func (s *Server) requestPoW(conn net.Conn) error {
 		return write(conn, &ErrorResponse{Message: "PowNonceRequest is expected"})
 	}
 
-	if err := s.pow.Verify(req.Challenge, req.Nonce); err != nil {
+	if err := pow.Verify(challenge, zeros, req.Nonce); err != nil {
 		return write(conn, &ErrorResponse{Message: err.Error()})
 	}
 	return nil
 }
 
-func (s *Server) adjustPoW(ctx context.Context) {
-	// TODO
-}
-
+// ip extracts IP address from net.Conn
+// Panics if address is not *net.TCPAddr
 func ip(conn net.Conn) net.IP {
 	return conn.RemoteAddr().(*net.TCPAddr).IP
 }

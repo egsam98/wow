@@ -14,7 +14,7 @@ import (
 var phrases json.RawMessage
 
 type Repository struct {
-	// sync.RWMutex not necessary for read-only storage
+	// sync.RWMutex isn't necessary for read-only repository
 	phrases []repository.Phrase
 }
 

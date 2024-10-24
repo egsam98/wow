@@ -7,6 +7,7 @@ import (
 	"github.com/egsam98/wow/internal/api"
 )
 
+// Handler impls api.ServerHandler handling TCP requests
 type Handler struct {
 	repo repository.Repository
 }

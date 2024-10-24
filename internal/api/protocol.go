@@ -14,6 +14,7 @@ import (
 const maxMessageLen = 1024 // 1KB
 const terminal = '\n'
 
+// write to connection
 func write(conn net.Conn, msg message) error {
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
@@ -30,6 +31,7 @@ func write(conn net.Conn, msg message) error {
 	return errors.Wrap(err, "write")
 }
 
+// read from connection
 func read(conn net.Conn) (message, error) {
 	reader := bufio.NewReader(io.LimitReader(conn, maxMessageLen))
 	buf, err := reader.ReadBytes(terminal)
@@ -62,6 +64,7 @@ func read(conn net.Conn) (message, error) {
 	return msg, nil
 }
 
+// opCode is a code of `operation` corresponding to every `message`
 type opCode string
 
 const (
@@ -72,6 +75,7 @@ const (
 	errorResp        opCode = "error_resp"
 )
 
+// operation is primary DTO that is transferred in TCP connection
 type operation struct {
 	Code    opCode          `json:"code"`
 	Message json.RawMessage `json:"message"`
@@ -82,15 +86,14 @@ type message interface {
 }
 
 type PowNonceRequest struct {
-	Challenge [pow.ChalLen]byte `json:"challenge"`
-	Nonce     [8]byte           `json:"nonce"`
+	Nonce [8]byte `json:"nonce"`
 }
 
 func (*PowNonceRequest) opCode() opCode { return powNonceReq }
 
 type PowChallengeResponse struct {
 	Challenge [pow.ChalLen]byte `json:"challenge"`
-	Zeroes    uint              `json:"zeroes"`
+	Zeros     uint              `json:"zeros"`
 }
 
 func (*PowChallengeResponse) opCode() opCode { return powChallengeResp }

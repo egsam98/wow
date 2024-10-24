@@ -10,3 +10,6 @@ lint: ## Run linter
 
 run: ## Run services from docker-compose.yaml
 	docker-compose up --remove-orphans
+
+test: ## Run go tests
+	go test ./... -count=1
