@@ -24,7 +24,7 @@ const envPath = ".env"
 type Envs struct {
 	Addr        string        `envconfig:"ADDR" required:"true"`
 	PuzzleZeros uint          `envconfig:"PUZZLE_ZEROS" required:"true"`
-	TCPDeadline time.Duration `envconfig:"TCP_DEADLINE" default:"20s"`
+	TCPTimeout  time.Duration `envconfig:"TCP_TIMEOUT" default:"20s"`
 	Logger      struct {
 		Pretty bool          `envconfig:"LOG_PRETTY" default:"false"`
 		Lvl    zerolog.Level `envconfig:"LOG_LVL" default:"debug"`
@@ -68,7 +68,7 @@ func run(ctx context.Context, envs Envs) error {
 
 	srv := api.NewServer(
 		envs.Addr,
-		envs.TCPDeadline,
+		envs.TCPTimeout,
 		server.NewHandler(repo),
 		puzzle,
 	)

@@ -28,7 +28,8 @@ func NewRepository() (*Repository, error) {
 
 func (r *Repository) Phrase() (*repository.Phrase, error) {
 	i := rand.IntN(len(r.phrases))
-	return &r.phrases[i], nil
+	copied := r.phrases[i]
+	return &copied, nil
 }
 
 func (r *Repository) AllPhrases() ([]repository.Phrase, error) {
